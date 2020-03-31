@@ -1,6 +1,5 @@
 import { webClient } from '../utils/slack';
-
-const z2h = s => s.replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+import { z2h } from '../utils/utils';
 
 const classes = [
     ['月1', '人生論第一']

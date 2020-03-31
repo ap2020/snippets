@@ -1,21 +1,11 @@
 import {promises as fs} from 'fs';
-import readline_ from 'readline';
 import {google} from 'googleapis';
 import {scopes} from './google_scopes';
+import {readline} from './utils';
 
 export type OAuth2Client = InstanceType<typeof google.auth.OAuth2>;
 
 const TOKEN_PATH = 'token.json';
-
-const readline = (): Promise<string> => new Promise((resolve, reject) => {
-    const rl = readline_.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-    rl.once('line',  async (code) => {
-        resolve(code);
-    });
-});
 
 const authorize = async (credentials): Promise<OAuth2Client> => {
     const {client_secret, client_id, redirect_uris} = credentials.installed;  
