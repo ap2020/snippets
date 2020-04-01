@@ -119,3 +119,5 @@ dist
 # secrets
 credentials.json
 token.json
+*.secret.*
+*_secret/
