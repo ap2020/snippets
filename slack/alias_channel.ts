@@ -30,56 +30,58 @@ CYYYYYYYYYY	current-channel-name-2	alias-name-2
 const data = dataStr.trim().split("\n").map(s => s.split("\t"));
 
 (async () => {
-    const client = new WebClient(process.env.SLACK_TOKEN_USER);
+    try {
+        const client = new WebClient(process.env.SLACK_TOKEN_USER);
 
-    for (const row of data) {
-        let [channelID, originalName, aliasName] = row;
+        for (const row of data) {
+            let [channelID, originalName, aliasName] = row;
 
-        let channel = (await client.conversations.info({
-            channel: channelID,
-        })).channel as {is_member: boolean};
-        console.log(channel);
-        await sleep(1000);
-
-        const joined = channel.is_member;
-
-        if (!joined) await client.conversations.join({
-            channel: channelID,
-        });
-        await sleep(1000);
-
-        await client.conversations.rename({
-            channel: channelID,
-            name: aliasName,
-        });
-        await sleep(1000);
-
-        await client.conversations.rename({
-            channel: channelID,
-            name: originalName,
-        });
-        await sleep(1000);
-
-        // Delete "channel renamed" messages
-        const messages = ((await client.conversations.history({
-            channel: channelID,
-        })).messages as any[])
-            .filter(({subtype}) => subtype === "channel_name")
-            .slice(0,2); // because we renamed it twice
-        for (const m of messages) {
-            await client.chat.delete({
+            let channel = (await client.conversations.info({
                 channel: channelID,
-                ts: m.ts,
+            })).channel as {is_member: boolean};
+            console.log(channel);
+            await sleep(1000);
+
+            const joined = channel.is_member;
+
+            if (!joined) await client.conversations.join({
+                channel: channelID,
             });
             await sleep(1000);
+
+            await client.conversations.rename({
+                channel: channelID,
+                name: aliasName,
+            });
+            await sleep(1000);
+
+            await client.conversations.rename({
+                channel: channelID,
+                name: originalName,
+            });
+            await sleep(1000);
+
+            // Delete "channel renamed" messages
+            const messages = ((await client.conversations.history({
+                channel: channelID,
+            })).messages as any[])
+                .filter(({subtype}) => subtype === "channel_name")
+                .slice(0,2); // because we renamed it twice
+            for (const m of messages) {
+                await client.chat.delete({
+                    channel: channelID,
+                    ts: m.ts,
+                });
+                await sleep(1000);
+            }
+
+            if (!joined) await client.conversations.leave({
+                channel: channelID,
+            });
+            await sleep(7000);
         }
-
-        if (!joined) await client.conversations.leave({
-            channel: channelID,
-        });
-        await sleep(7000);
-
-        break;
+    } catch (e) {
+        console.error(e);
     }
 })();
 
