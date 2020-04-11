@@ -1,3 +1,24 @@
+/**
+ * Add alias to slack channels
+ *
+ * What it does
+ * ============
+ * 1. Join channel if needed
+ * 2. Rename channel to its alias
+ * 3. Rename channel to its original name
+ * 4. Delete "channel renamed" messages
+ * 5. Leave channel if needed
+ * 
+ * Setup
+ * =====
+ * - yarn install
+ * - add scopes to Slack App and reinstall if needed
+ *   + channels:write, channels:read, chat:write
+ * - Set user token of *admin* as SLACK_TOKEN_USER in .env
+ *   + ordinary users don't have the permisson to rename channels or delete messages!
+ * - npm run dev slack/alias_channel.ts
+ */
+
 import {WebClient} from "@slack/web-api";
 
 const sleep = async (millis: number) => await new Promise(resolve => setTimeout(resolve, millis));
