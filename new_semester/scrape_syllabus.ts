@@ -20,9 +20,10 @@ const getInnerText = async (e: puppeteer.ElementHandle<any>): Promise<string> =>
     await page.waitFor('#userNameInput', {timeout: 60 * 1000});
 
     const username = process.env.UTAS_USERNAME;
-    const {stdout: password} = await promisify(execFile)('security', ['find-generic-password', '-s', process.env.KEYCHAIN_UTAS ,'-w']);
+    const password = (await promisify(execFile)('security', ['find-generic-password', '-s', process.env.KEYCHAIN_UTAS ,'-w'])).stdout.replace(/\n$/, '');
     await page.type('#userNameInput', username);
     await page.type('#passwordInput', password);
+    await page.click('#submitButton');
 
     // go to page
     await page.waitFor('#tab-sy', {timeout: 60 * 1000});
