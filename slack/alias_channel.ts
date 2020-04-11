@@ -11,7 +11,7 @@
  * 
  * Setup
  * =====
- * - yarn install
+ * - npm install
  * - add scopes to Slack App and reinstall if needed
  *   + channels:write, channels:read, chat:write
  * - Set user token of *admin* as SLACK_TOKEN_USER in .env
