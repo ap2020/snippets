@@ -60,6 +60,20 @@ const data = dataStr.trim().split("\n").map(s => s.split("\t"));
         });
         await sleep(1000);
 
+        // Delete "channel renamed" messages
+        const messages = ((await client.conversations.history({
+            channel: channelID,
+        })).messages as any[])
+            .filter(({subtype}) => subtype === "channel_name")
+            .slice(0,2); // because we renamed it twice
+        for (const m of messages) {
+            await client.chat.delete({
+                channel: channelID,
+                ts: m.ts,
+            });
+            await sleep(1000);
+        }
+
         if (!joined) await client.conversations.leave({
             channel: channelID,
         });
