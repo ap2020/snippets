@@ -30,7 +30,7 @@ CYYYYYYYYYY	current-channel-name-2	alias-name-2
 const data = dataStr.trim().split("\n").map(s => s.split("\t"));
 
 (async () => {
-    const client = new WebClient(process.env.SLACK_BOT_TOKEN);
+    const client = new WebClient(process.env.SLACK_TOKEN_USER);
 
     for (const row of data) {
         let [channelID, originalName, aliasName] = row;
