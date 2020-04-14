@@ -11,6 +11,7 @@
   "license": "MIT",
   "dependencies": {
     "@slack/web-api": "^5.8.0",
+    "common-tags": "^1.8.0",
     "dotenv": "^8.2.0",
     "googleapis": "^39.2.0",
     "ora": "^4.0.3",
