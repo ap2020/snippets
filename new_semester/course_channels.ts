@@ -21,7 +21,7 @@ const resList: [string, string][] = [];
             resList.push([file.replace('.json', ''), (res.channel as {id: string}).id]);
         };
     } catch(e) {
-        
+        console.error(e);
     }
     console.log(resList.map(([a,b]) => `${a}\t${b}`).join('\n'));
 })().catch(e => console.error(e));
