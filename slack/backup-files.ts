@@ -12,6 +12,7 @@ import {webClient} from '../utils/slack';
 import {google} from 'googleapis';
 import {getGoogleClient} from '../utils/google';
 import {driveFolderId} from './backup-files.secret';
+import type { WebAPICallResult } from '@slack/web-api';
 
 type File = {
     id: string;
@@ -19,6 +20,13 @@ type File = {
     mimetype: string;
     url_private_download: string;
 };
+
+type Paging = {
+    count: number,
+    total: number,
+    page: number,
+    pages: number,
+}
 
 const objToMap = <T>(obj: {[key: string]: T}): Map<string, T> => new Map(Object.entries(obj));
 const mapToObj = <T>(map: Map<string, T>): {[key: string]: T} => Object.fromEntries(map.entries());
@@ -29,34 +37,57 @@ const main = async () => {
     const auth = await getGoogleClient();
     const drive = google.drive({version: 'v3', auth});
     const fileIdMap = objToMap(JSON.parse(await fs.readFile(resPath, {encoding: 'utf-8'})));
-    
-    const {files}: {files: File[]} = await webClient.files.list({
-        count: 1,
-    }) as any;
-    const file = files[0];
-    console.log(file.url_private_download);
-    const fileStream: Readable = (await axios.get(
-        file.url_private_download,
-        {
-            headers: {
-                'Authorization': `Bearer ${process.env.SLACK_TOKEN_BOT}`
-            },
-            responseType: 'stream',
+    let spinner = ora('Fetching file list ...').start();
+    let res = await webClient.files.list({
+        count: 100,
+    }) as WebAPICallResult & {files: File[], paging: Paging};
+    spinner.succeed(`Fetched ${res.files.length} file metadatas (${res.paging.page}/${res.paging.pages})`);
+    while (true) {
+        let i = 0;
+        let spinner = ora(`Uploading ${i}/${res.files.length} files ...`).start();
+        for (const file of res.files) {
+            if (fileIdMap.has(file.id)) {continue;} 
+            try {
+                spinner.text = `Uploading ${i}/${res.files.length} files ...`;
+                const fileStream: Readable = (await axios.get(
+                    file.url_private_download,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${process.env.SLACK_TOKEN_BOT}`
+                        },
+                        responseType: 'stream',
+                    }
+                )).data;
+                const driveFile = (await drive.files.create({
+                    requestBody: {
+                        name: file.name,
+                        mimeType: file.mimetype,
+                        parents: [driveFolderId],
+                    },
+                    media: {
+                        mimeType: file.mimetype,
+                        body: fileStream,
+                    },
+                })).data;
+                fileIdMap.set(file.id, driveFile.id);
+                await fs.writeFile(resPath, JSON.stringify(mapToObj(fileIdMap), undefined, 2));
+                ++i;
+            } catch (e) {
+                console.error('error in ', file.id);
+                console.error(e);
+            }
         }
-    )).data;
-    const driveFile = (await drive.files.create({
-        requestBody: {
-            name: file.name,
-            mimeType: file.mimetype,
-            parents: [driveFolderId],
-        },
-        media: {
-            mimeType: file.mimetype,
-            body: fileStream,
-        },
-    })).data;
-    fileIdMap.set(file.id, driveFile.id);
-
+        spinner.succeed(`Uploaded ${i} files`);
+        if (res.paging.page === res.paging.pages) {
+            break;
+        }
+        spinner = ora('Fetching file list ...').start();
+        res = await webClient.files.list({
+            count: 100,
+            page: res.paging.page + 1,
+        }) as any;
+        spinner.succeed(`Fetched ${res.files.length} file metadatas (${res.paging.page}/${res.paging.pages})`);
+    }
     await fs.writeFile(resPath, JSON.stringify(mapToObj(fileIdMap), undefined, 2));
     console.log('done!');
 };
