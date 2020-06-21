@@ -18,7 +18,7 @@ type File = {
     id: string;
     name: string;
     mimetype: string;
-    url_private_download: string;
+    url_private_download?: string; // some don't have (ex. Google Drive file previews)
 };
 
 type Paging = {
@@ -46,7 +46,15 @@ const main = async () => {
         let i = 0;
         let spinner = ora(`Uploading ${i}/${res.files.length} files ...`).start();
         for (const file of res.files) {
-            if (fileIdMap.has(file.id)) {continue;} 
+            if (fileIdMap.has(file.id)) {
+                // already uploaded
+                continue;
+            } 
+            if (!file.url_private_download) {
+                // cannot download
+                // ex. Google Drive file previews
+                continue;
+            }
             try {
                 spinner.text = `Uploading ${i}/${res.files.length} files ...`;
                 const fileStream: Readable = (await axios.get(
