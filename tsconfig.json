@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
-    "target": "esnext",
+    "target": "es2019",
     "module": "CommonJS",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "lib": ["es2019"],
+    "lib": ["es2020"],
     "skipLibCheck": true,
     "sourceMap": true,
   }
