@@ -2,12 +2,15 @@ import puppeteer from 'puppeteer';
 import {execFile} from 'child_process';
 import {promisify} from 'util';
 import ora from 'ora';
-import {courses} from './scrape_syllabus.secret'
+import {courses, gakubuCode} from './scrape_syllabus.secret'
 import {promises as fs} from 'fs';
 import path from 'path';
 
 const getInnerText = async (e: puppeteer.ElementHandle<any>): Promise<string> => 
     await (await e.getProperty('innerText')).jsonValue() as string;
+
+const getPassword = async (): Promise<string> =>
+    (await promisify(execFile)('security', ['find-generic-password', '-s', process.env.KEYCHAIN_UTAS ,'-w'])).stdout.replace(/\n$/, '');
 
 (async () => {
     const browser = await puppeteer.launch(/*{headless: false, slowMo: 0}*/);
@@ -20,7 +23,7 @@ const getInnerText = async (e: puppeteer.ElementHandle<any>): Promise<string> =>
     await page.waitFor('#userNameInput', {timeout: 60 * 1000});
 
     const username = process.env.UTAS_USERNAME;
-    const password = (await promisify(execFile)('security', ['find-generic-password', '-s', process.env.KEYCHAIN_UTAS ,'-w'])).stdout.replace(/\n$/, '');
+    const password = await getPassword();
     await page.type('#userNameInput', username);
     await page.type('#passwordInput', password);
     await page.click('#submitButton');
@@ -50,11 +53,13 @@ const getInnerText = async (e: puppeteer.ElementHandle<any>): Promise<string> =>
             await page.click('#tabmenu-ul > li:nth-child(3) > span')
             
             
-            //sp2.text = 'Select department';
+            sp2.text = 'Select department';
             await page.waitFor('#main-frame-if', {timeout: 60 * 1000}); 
             const frame = page.frames().find(frame => frame.name() === 'portlet-body');
-            // await frame.waitFor('#gakubuCode', {timeout: 60 * 1000});
-            // await frame.select('#gakubuCode', gakubu);
+            await page.waitFor(1000);
+            await frame.waitFor('#gakubuCode', {timeout: 60 * 1000});
+            await page.waitFor(1000);
+            await frame.select('#gakubuCode', gakubuCode[gakubu]);
 
             await page.waitFor(1000);
             await frame.waitFor('#gakkaCourseDataForm', {timeout: 60 * 1000});
@@ -113,7 +118,12 @@ const getInnerText = async (e: puppeteer.ElementHandle<any>): Promise<string> =>
             const data: string[][]  = (await Promise.all(
                 (await Promise.all([1,2].map(async (i) => await coursePage.$$(`#tabs-${i} > table > tbody > tr`)))).flat()
                 .map(async e =>
-                    await Promise.all(['th', 'td'].map(async tag => await getInnerText(await e.$(tag))))
+                    await Promise.all(
+                        (await Promise.all(
+                            ['th', 'td'].map(async tag => await e.$(tag))
+                        ))
+                        .map(async e => e === null ? '': await getInnerText(e))
+                    )
                 )
             )).map(l => l.map(s => s.trim().replace(/／.+?(　|$)/g, '').trim()));
         
