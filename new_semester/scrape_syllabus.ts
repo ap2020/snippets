@@ -2,7 +2,7 @@ import puppeteer from 'puppeteer';
 import {execFile} from 'child_process';
 import {promisify} from 'util';
 import ora from 'ora';
-import {gakkas, gakubuCode} from './scrape_syllabus.secret'
+import {courses, gakubuCode} from './scrape_syllabus.secret'
 import {promises as fs} from 'fs';
 import path from 'path';
 
@@ -41,7 +41,7 @@ const fileExists = async (filepath: string): Promise<boolean> => {
     await page.waitFor('#tab-sy', {timeout: 60 * 1000});
     sp1.succeed('Logged in');
 
-    for (const {gakubu, gakka} of gakkas) {
+    for (const {gakubu, gakka, course} of courses) {
         try {
             let i = 0;
             while (true) {
@@ -94,11 +94,22 @@ const fileExists = async (filepath: string): Promise<boolean> => {
                     });
 
                     sp2.succeed('Opened course list');
-
-                    const courselinks = await frame.$$('td > a');
-                    if (i >= courselinks.length) break;
-                    const courselink = courselinks[i];
-                    i += 1;
+                    let courselink: puppeteer.ElementHandle;
+                    if (course === null) {
+                        const courselinks = await frame.$$('td > a');
+                        if (i >= courselinks.length) break;
+                        courselink = courselinks[i];
+                        i += 1;
+                    } else {
+                        let elist = await frame.$x(`/html/body/table/tbody/tr/td/a[contains(text(), "${course}")]`);
+                        if (elist.length === 0) {throw Error(`No such course.`)}
+                        if (elist.length > 1) {
+                            const exact = (await Promise.all(elist.map(async e => await getInnerText(e)))).filter(s => s === courseName);
+                            if (exact.length === 0) { throw Error(`No exact match.`)}
+                            if (exact.length > 1) { throw Error(`Multiple exact match.`)}
+                        }
+                        courselink = elist[0];
+                    }
                     
                     let sp3 = ora({text: 'Opening course page', indent: 2}).start();
                     let courseName: string = null;
