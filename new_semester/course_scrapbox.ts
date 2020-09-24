@@ -1,27 +1,35 @@
 import { promises as fs } from 'fs';
 import { stripIndents } from 'common-tags';
 import path from 'path';
-import {courses} from './scrape_syllabus.secret';
+
+const shouldSkip = (course: Map<string, string>): boolean => {
+    if (course.get('学年').includes('B2')) return true;
+    const sem = course.get('開講区分');
+    if ((sem.includes('S') || sem.includes('Ｓ')) && !(sem.includes('A') || sem.includes('Ａ'))) return true;
+    if ((!course.get('共通科目コード').startsWith('FEN')) && course.get('他学部履修') !== '可') return true;
+
+    return false;
+}
 
 (async () => {
-    const manualMap = new Map(courses.map(item => [item.courseName, item]));
     const res: [string, string][] = [];
+    const doneList: string[] = [];
     try {
         const folder = path.join(__dirname, 'syllabus_data_secret');
         const files = await fs.readdir(folder);
         const skipList = ''.split(' ');
+        // TODO: read doneList from file and ignore
         for (const file of files) {
             const basename = file.replace('.json', '');
-            const manualdata = manualMap.get(basename);
             if (skipList.includes(basename)) {continue;}
             
             const fullpath = path.join(folder,file);
             const m = new Map(JSON.parse(await fs.readFile(fullpath, {encoding: 'utf-8'}))) as Map<string, string>;
+            if (shouldSkip(m)) {continue;}
 
             // 工学部用
             res.push([m.get("開講科目名"), stripIndents`
             #授業 #3S ${[0,2].map(x => (m.get('開講区分')||'').slice(x,x+2)).filter(s=>s).map(s=>`#3${s}`).join(' ')} ${m.get("曜限").split(/,\s+/g).map(s=> `#${s.trim()}`).join(' ')}
-            #計数数理${manualdata.suri||'?'} #計数システム${manualdata.system||'?'} #物工${manualdata.bukko||'?'}
             
             教員: [${m.get("主担当教員").replace(/\s/g,'')}]
             教室: ${m.get("教室")}
@@ -57,11 +65,14 @@ import {courses} from './scrape_syllabus.secret';
             
             [*** フリースペース]
             `])
+            doneList.push(basename);
         };
     } catch(e) {
         console.error(e);
     }
-    await fs.writeFile(path.join(__dirname, 'course_scrapbox.res.secret.json'), JSON.stringify(res));
+    await fs.writeFile(path.join(__dirname, 'course_scrapbox.pastethis.secret.json'), JSON.stringify(res));
+    await fs.writeFile(path.join(__dirname, 'course_scrapbox.donelist.secret.json'), JSON.stringify(doneList));
+    // TODO: merge with existing doneList
  })().catch(e => console.error(e));
 
 
